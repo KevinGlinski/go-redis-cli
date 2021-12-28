@@ -2,6 +2,4 @@ module github.com/KevinGlinski/go-redis-cli
 
 go 1.16
 
-require (
-	github.com/gomodule/redigo v1.8.6 // indirect
-)
+require github.com/gomodule/redigo v1.8.6
