@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func newPool(server *redisServer) *redis.Pool {
@@ -112,16 +113,14 @@ func findRedisServers(region string) ([]*redisServer, error) {
 var pool *redis.Pool
 
 func print(format string, params ...interface{}) {
-	_, _ = fmt.Fprintf(os.Stderr, format, params)
+	_, _ = fmt.Fprintf(os.Stderr, format, params...)
 }
 
 func discoverRegionFromMetadata() string {
-	url := "http://169.254.169.254/latest/api/token"
-	method := "PUT"
-
-	client := &http.Client {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
 	}
-	req, err := http.NewRequest(method, url, nil)
+	req, err := http.NewRequest("PUT", "http://169.254.169.254/latest/api/token", nil)
 
 	if err != nil {
 		fmt.Println(err)
@@ -185,7 +184,7 @@ func main() {
 
 	server := &redisServer{}
 
-	if len(args) > 1 {
+	if len(args) > 0 {
 
 		encrypted := !strings.EqualFold(args[0], "localhost")
 
@@ -219,7 +218,7 @@ func main() {
 
 	}
 
-	_, _ = fmt.Fprintf(os.Stderr, "Connecting to %v...\n", server.Name)
+	print("Connecting to %v...\n", server.Name)
 
 	pool = newPool(server)
 	client := pool.Get()
