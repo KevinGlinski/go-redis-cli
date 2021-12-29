@@ -44,8 +44,9 @@ func newPool(server *redisServer) *redis.Pool {
 	}
 }
 
-func findRedisServers() ([]*redisServer, error) {
+func findRedisServers(region string) ([]*redisServer, error) {
 	cfg, _ := config.LoadDefaultConfig(context.Background())
+	cfg.Region = region
 	ecClient := elasticache.NewFromConfig(cfg)
 
 	servers, err := ecClient.DescribeCacheClusters(context.Background(), &elasticache.DescribeCacheClustersInput{})
@@ -195,7 +196,7 @@ func main() {
 			Encrypted: encrypted,
 		}
 	} else {
-		redisServers, err := findRedisServers()
+		redisServers, err := findRedisServers(region)
 
 		if err != nil {
 			print("%v\n", err)
