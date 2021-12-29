@@ -126,6 +126,7 @@ func main() {
 
 		if err != nil {
 			_,_ = fmt.Fprintf(os.Stderr, "%v\n", err)
+			return
 		}
 
 		_,_ = fmt.Fprintf(os.Stderr, "Enter the server to connect to:\n")
