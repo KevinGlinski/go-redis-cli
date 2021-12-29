@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache/types"
+	"github.com/c-bata/go-prompt"
 	"github.com/gomodule/redigo/redis"
 	"io/ioutil"
 	"net/http"
@@ -118,7 +119,7 @@ func print(format string, params ...interface{}) {
 
 func discoverRegionFromMetadata() string {
 	client := &http.Client{
-		Timeout: 5 * time.Second,
+		Timeout: 1 * time.Second,
 	}
 	req, err := http.NewRequest("PUT", "http://169.254.169.254/latest/api/token", nil)
 
@@ -224,14 +225,20 @@ func main() {
 	client := pool.Get()
 	defer client.Close()
 
-	for {
-		args := strings.Split(prompt(r), " ")
+	history := []string{}
 
-		command := args[0]
+	for {
+
+		input := prompt.Input("redis> ", completer, prompt.OptionHistory(history))
+		redisargs := strings.Split(input, " ")
+		history = append(history,input)
+
+
+		command := redisargs[0]
 
 		commandArgs := make([]interface{}, 0)
-		for x := 1; x < len(args); x++ {
-			commandArgs = append(commandArgs, args[x])
+		for x := 1; x < len(redisargs); x++ {
+			commandArgs = append(commandArgs, redisargs[x])
 		}
 
 		returnValue, err := client.Do(command, commandArgs...)
@@ -260,23 +267,13 @@ func main() {
 
 }
 
-func prompt(r *bufio.Reader) string {
-	print("redis> ")
-
-	s, _ := r.ReadString('\n')
-	return strings.TrimSpace(s)
+func completer(d prompt.Document) []prompt.Suggest {
+	s := []prompt.Suggest{
+		{Text: "PING", Description: "PING"},
+		{Text: "SET", Description: "SET key value"},
+		{Text: "GET", Description: "GET key"},
+		{Text: "HGET", Description: "HGET key field"},
+		{Text: "HGETALL", Description: "HGET key"},
+	}
+	return prompt.FilterHasPrefix(s, d.GetWordBeforeCursor(), true)
 }
-
-//
-//func main2() {
-//
-//	var url string
-//	var useTls bool
-//	flag.StringVar(&url, "host", "", "")
-//	flag.BoolVar(&useTls, "tls", true, "")
-//	flag.Parse()
-//
-//	args := flag.Args()
-//
-//
-//}
