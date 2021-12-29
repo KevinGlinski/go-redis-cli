@@ -47,6 +47,7 @@ func findRedisServers() ([]*redisServer, error){
 	servers, err := ecClient.DescribeCacheClusters(context.Background(), &elasticache.DescribeCacheClustersInput{})
 
 	if err != nil {
+		print("%v", err)
 		return nil, errors.New("user does not have permissions to describe cache clusters")
 	}
 
@@ -54,7 +55,7 @@ func findRedisServers() ([]*redisServer, error){
 
 	for _, cluster := range servers.CacheClusters {
 		if strings.EqualFold("redis", aws.ToString(cluster.Engine)){
-			_,_ = fmt.Fprintf(os.Stderr, "%v\n", aws.ToString(cluster.CacheClusterId))
+			print("%v\n", aws.ToString(cluster.CacheClusterId))
 			clusterMap[aws.ToString(cluster.CacheClusterId)] = cluster
 		}
 
@@ -63,6 +64,7 @@ func findRedisServers() ([]*redisServer, error){
 	repGroups, err := ecClient.DescribeReplicationGroups(context.Background(), &elasticache.DescribeReplicationGroupsInput{})
 
 	if err != nil {
+		print("%v", err)
 		return nil, errors.New("user does not have permissions to describe replication groups")
 	}
 
@@ -73,7 +75,7 @@ func findRedisServers() ([]*redisServer, error){
 		if cluster, ok := clusterMap[replicationGroup.MemberClusters[0]]; ok {
 			//_,_ = fmt.Fprintf(os.Stderr, "%v - %v\n", aws.ToString(replicationGroup.Name), aws.ToString(cluster.ConfigurationEndpoint.Address))
 
-			_,_ = fmt.Fprintf(os.Stderr, "%v - %v\n", aws.ToString(replicationGroup.Description), aws.ToString(replicationGroup.NodeGroups[0].PrimaryEndpoint.Address))
+			print("%v - %v\n", aws.ToString(replicationGroup.Description), aws.ToString(replicationGroup.NodeGroups[0].PrimaryEndpoint.Address))
 
 			name := aws.ToString(replicationGroup.Description)
 
@@ -105,6 +107,10 @@ func findRedisServers() ([]*redisServer, error){
 
 var pool *redis.Pool
 
+func print(format string, params ...interface{}) {
+	_,_ = fmt.Fprintf(os.Stderr, format, params)
+}
+
 func main() {
 	r := bufio.NewReader(os.Stdin)
 
@@ -125,13 +131,13 @@ func main() {
 		redisServers, err := findRedisServers()
 
 		if err != nil {
-			_,_ = fmt.Fprintf(os.Stderr, "%v\n", err)
+			print( "%v\n", err)
 			return
 		}
 
-		_,_ = fmt.Fprintf(os.Stderr, "Enter the server to connect to:\n")
+		print("Enter the server to connect to:\n")
 		for i, server := range redisServers {
-			_,_ = fmt.Fprintf(os.Stderr, "%v) %v %v\n", i + 1, server.Name, server.Endpoint)
+			print("%v) %v %v\n", i + 1, server.Name, server.Endpoint)
 		}
 
 		s, _ := r.ReadString('\n')
@@ -152,8 +158,6 @@ func main() {
 	defer client.Close()
 
 	for {
-
-
 		args := strings.Split(prompt(r), " ")
 
 		command := args[0]
@@ -165,22 +169,22 @@ func main() {
 
 		returnValue, err := client.Do(command, commandArgs...)
 		if err != nil {
-			_,_ = fmt.Fprintf(os.Stderr, "%v\n", err)
+			print( "%v\n", err)
 			continue
 		}
 
 		switch val := returnValue.(type){
 		case string:
-			_,_ = fmt.Fprintf(os.Stderr, "%v\n", returnValue)
+			print("%v\n", returnValue)
 		case []uint8:
-			_,_ = fmt.Fprintf(os.Stderr, "%v\n", string(val))
+			print( "%v\n", string(val))
 		case []interface{}:
 			for _, inner := range val {
 				switch val := inner.(type){
 				case string:
-					_,_ = fmt.Fprintf(os.Stderr, "%v\n", inner)
+					print("%v\n", inner)
 				case []uint8:
-					_,_ = fmt.Fprintf(os.Stderr, "%v\n", string(val))
+					print( "%v\n", string(val))
 				}
 			}
 		}
@@ -190,7 +194,7 @@ func main() {
 }
 
 func prompt(r *bufio.Reader) string{
-	_,_ = fmt.Fprintf(os.Stderr, "redis> ")
+	print( "redis> ")
 
 	s, _ := r.ReadString('\n')
 	return strings.TrimSpace(s)
