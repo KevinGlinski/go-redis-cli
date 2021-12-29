@@ -112,11 +112,14 @@ func main() {
 
 
 	if len(os.Args) > 1 {
+
+		encrypted := !strings.EqualFold(os.Args[1], "localhost")
+
 		server = &redisServer{
 			Endpoint:  os.Args[1],
 			Port:      6379,
-			Name:      "localhost",
-			Encrypted: false,
+			Name:      os.Args[1],
+			Encrypted: encrypted,
 		}
 	}else {
 		redisServers, err := findRedisServers()
