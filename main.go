@@ -17,7 +17,7 @@ import (
 
 func newPool(server *redisServer) *redis.Pool {
 	return &redis.Pool{
-		MaxIdle: 80,
+		MaxIdle:   80,
 		MaxActive: 12000,
 		Dial: func() (redis.Conn, error) {
 
@@ -30,7 +30,7 @@ func newPool(server *redisServer) *redis.Pool {
 				}
 			}
 
-			c, err := redis.Dial("tcp", fmt.Sprintf("%v:%v",server.Endpoint, server.Port), options...)
+			c, err := redis.Dial("tcp", fmt.Sprintf("%v:%v", server.Endpoint, server.Port), options...)
 
 			if err != nil {
 				panic(err.Error())
@@ -40,10 +40,10 @@ func newPool(server *redisServer) *redis.Pool {
 	}
 }
 
-func findRedisServers() ([]*redisServer, error){
+func findRedisServers() ([]*redisServer, error) {
 	cfg, _ := config.LoadDefaultConfig(context.Background())
 	ecClient := elasticache.NewFromConfig(cfg)
-	
+
 	servers, err := ecClient.DescribeCacheClusters(context.Background(), &elasticache.DescribeCacheClustersInput{})
 
 	if err != nil {
@@ -54,7 +54,7 @@ func findRedisServers() ([]*redisServer, error){
 	clusterMap := map[string]types.CacheCluster{}
 
 	for _, cluster := range servers.CacheClusters {
-		if strings.EqualFold("redis", aws.ToString(cluster.Engine)){
+		if strings.EqualFold("redis", aws.ToString(cluster.Engine)) {
 			print("%v\n", aws.ToString(cluster.CacheClusterId))
 			clusterMap[aws.ToString(cluster.CacheClusterId)] = cluster
 		}
@@ -67,7 +67,6 @@ func findRedisServers() ([]*redisServer, error){
 		print("%v", err)
 		return nil, errors.New("user does not have permissions to describe replication groups")
 	}
-
 
 	redisServers := make([]*redisServer, 0)
 	for _, replicationGroup := range repGroups.ReplicationGroups {
@@ -108,14 +107,13 @@ func findRedisServers() ([]*redisServer, error){
 var pool *redis.Pool
 
 func print(format string, params ...interface{}) {
-	_,_ = fmt.Fprintf(os.Stderr, format, params)
+	_, _ = fmt.Fprintf(os.Stderr, format, params)
 }
 
 func main() {
 	r := bufio.NewReader(os.Stdin)
 
 	server := &redisServer{}
-
 
 	if len(os.Args) > 1 {
 
@@ -127,31 +125,31 @@ func main() {
 			Name:      os.Args[1],
 			Encrypted: encrypted,
 		}
-	}else {
+	} else {
 		redisServers, err := findRedisServers()
 
 		if err != nil {
-			print( "%v\n", err)
+			print("%v\n", err)
 			return
 		}
 
 		print("Enter the server to connect to:\n")
 		for i, server := range redisServers {
-			print("%v) %v %v\n", i + 1, server.Name, server.Endpoint)
+			print("%v) %v %v\n", i+1, server.Name, server.Endpoint)
 		}
 
 		s, _ := r.ReadString('\n')
 		selection, _ := strconv.Atoi(strings.TrimSpace(s))
 
-		if ( selection -1) >= len(redisServers)  {
+		if (selection - 1) >= len(redisServers) {
 			return
 		}
 
-		server = redisServers[selection -1]
+		server = redisServers[selection-1]
 
 	}
 
-	_,_ = fmt.Fprintf(os.Stderr, "Connecting to %v...\n", server.Name)
+	_, _ = fmt.Fprintf(os.Stderr, "Connecting to %v...\n", server.Name)
 
 	pool = newPool(server)
 	client := pool.Get()
@@ -162,29 +160,29 @@ func main() {
 
 		command := args[0]
 
-		commandArgs := make([]interface{},0 )
-		for x:= 1; x< len(args); x++{
+		commandArgs := make([]interface{}, 0)
+		for x := 1; x < len(args); x++ {
 			commandArgs = append(commandArgs, args[x])
 		}
 
 		returnValue, err := client.Do(command, commandArgs...)
 		if err != nil {
-			print( "%v\n", err)
+			print("%v\n", err)
 			continue
 		}
 
-		switch val := returnValue.(type){
+		switch val := returnValue.(type) {
 		case string:
 			print("%v\n", returnValue)
 		case []uint8:
-			print( "%v\n", string(val))
+			print("%v\n", string(val))
 		case []interface{}:
 			for _, inner := range val {
-				switch val := inner.(type){
+				switch val := inner.(type) {
 				case string:
 					print("%v\n", inner)
 				case []uint8:
-					print( "%v\n", string(val))
+					print("%v\n", string(val))
 				}
 			}
 		}
@@ -193,12 +191,13 @@ func main() {
 
 }
 
-func prompt(r *bufio.Reader) string{
-	print( "redis> ")
+func prompt(r *bufio.Reader) string {
+	print("redis> ")
 
 	s, _ := r.ReadString('\n')
 	return strings.TrimSpace(s)
 }
+
 //
 //func main2() {
 //
