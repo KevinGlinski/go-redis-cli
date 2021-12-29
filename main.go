@@ -4,13 +4,17 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache"
 	"github.com/aws/aws-sdk-go-v2/service/elasticache/types"
 	"github.com/gomodule/redigo/redis"
+	"io/ioutil"
+	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -110,19 +114,84 @@ func print(format string, params ...interface{}) {
 	_, _ = fmt.Fprintf(os.Stderr, format, params)
 }
 
+func discoverRegionFromMetadata() string {
+	url := "http://169.254.169.254/latest/api/token"
+	method := "PUT"
+
+	client := &http.Client {
+	}
+	req, err := http.NewRequest(method, url, nil)
+
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	req.Header.Add("X-aws-ec2-metadata-token-ttl-seconds", "21600")
+
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	defer res.Body.Close()
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	token := string(body)
+
+	req, err = http.NewRequest("GET",  "http://169.254.169.254/latest/meta-data//placement/availability-zone", nil)
+
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	req.Header.Add("X-aws-ec2-metadata-token", token)
+
+	res, err = client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	defer res.Body.Close()
+
+	body, err = ioutil.ReadAll(res.Body)
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	re := regexp.MustCompile(`(?m)[a-z]$`)
+
+	return re.ReplaceAllString(string(body), "")
+
+}
+
 func main() {
+	var region string
+	flag.StringVar(&region, "region", "", "")
+	flag.Parse()
+
+	if len(region) == 0 {
+		region = discoverRegionFromMetadata()
+	}
+
+	args := flag.Args()
+
 	r := bufio.NewReader(os.Stdin)
 
 	server := &redisServer{}
 
-	if len(os.Args) > 1 {
+	if len(args) > 1 {
 
-		encrypted := !strings.EqualFold(os.Args[1], "localhost")
+		encrypted := !strings.EqualFold(args[0], "localhost")
 
 		server = &redisServer{
-			Endpoint:  os.Args[1],
+			Endpoint:  args[0],
 			Port:      6379,
-			Name:      os.Args[1],
+			Name:      args[0],
 			Encrypted: encrypted,
 		}
 	} else {
