@@ -241,6 +241,31 @@ func main() {
 			commandArgs = append(commandArgs, redisargs[x])
 		}
 
+		if strings.EqualFold(command, "EVAL"){
+			scriptName := commandArgs[0]
+
+			script, err := ioutil.ReadFile(scriptName.(string))
+
+			if err != nil {
+				print("%v\n", err)
+			} else {
+				var getScript = redis.NewScript(0, string(script))
+				returnValue, err := getScript.Do(client, 0)
+				if err != nil {
+					print("%v\n", err)
+
+				} else {
+					print("%v\n", returnValue)
+				}
+
+				continue
+			}
+
+
+		} else if strings.EqualFold(command, "quit") ||  strings.EqualFold(command, "exit") {
+			return
+		}
+		
 		returnValue, err := client.Do(command, commandArgs...)
 		if err != nil {
 			print("%v\n", err)
@@ -252,6 +277,8 @@ func main() {
 			print("%v\n", returnValue)
 		case []uint8:
 			print("%v\n", string(val))
+		case int64:
+			print("%v\n", val)
 		case []interface{}:
 			for _, inner := range val {
 				switch val := inner.(type) {
